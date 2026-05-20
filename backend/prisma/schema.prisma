@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int               @id @default(autoincrement())
+  email         String            @unique
+  password      String
+  name          String
+  role          String            @default("student")
+  avatarUrl     String?
+  enrolledAt    DateTime          @default(now())
+  enrollments   Enrollment[]
+  progress      LessonProgress[]
+  quizSubmissions QuizSubmission[]
+  certificates  Certificate[]
+  discussions   Discussion[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model About {
+  id          Int      @id @default(autoincrement())
+  title       String
+  mission     String
+  vision      String
+  history     String
+  updatedAt   DateTime @updatedAt
+}
+
+model ResearchArea {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  icon        String    @default("flask")
+  order       Int       @default(0)
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Project {
+  id              Int           @id @default(autoincrement())
+  title           String
+  description     String
+  imageUrl        String?
+  type            String        @default("research")
+  techStack       String?
+  githubUrl       String?
+  liveUrl         String?
+  researchAreaId  Int?
+  researchArea    ResearchArea? @relation(fields: [researchAreaId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model TeamMember {
+  id          Int      @id @default(autoincrement())
+  name        String
+  role        String
+  bio         String?
+  photoUrl    String?
+  email       String?
+  linkedin    String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Publication {
+  id        Int      @id @default(autoincrement())
+  title     String
+  summary   String
+  content   String?
+  imageUrl  String?
+  date      DateTime @default(now())
+  type      String   @default("article")
+  link      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  subject   String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Course {
+  id          Int          @id @default(autoincrement())
+  title       String
+  slug        String       @unique
+  description String
+  imageUrl    String?
+  category    String?
+  published   Boolean      @default(false)
+  lessons     Lesson[]
+  enrollments Enrollment[]
+  quiz        Quiz?
+  certificates Certificate[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Lesson {
+  id          Int              @id @default(autoincrement())
+  courseId     Int
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  videoUrl    String?
+  order       Int              @default(0)
+  duration    Int?
+  progress    LessonProgress[]
+  discussions Discussion[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Enrollment {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    Int
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrolledAt  DateTime @default(now())
+  completedAt DateTime?
+
+  @@unique([userId, courseId])
+}
+
+model LessonProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    Int
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, lessonId])
+}
+
+model Quiz {
+  id          Int              @id @default(autoincrement())
+  courseId     Int             @unique
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  passingScore Int             @default(70)
+  questions   Question[]
+  submissions QuizSubmission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Question {
+  id           Int    @id @default(autoincrement())
+  quizId       Int
+  quiz         Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text         String
+  options      String
+  correctIndex Int
+  order        Int    @default(0)
+}
+
+model QuizSubmission {
+  id          Int      @id @default(autoincrement())
+  quizId      Int
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers     String
+  score       Int
+  total       Int
+  passed      Boolean
+  submittedAt DateTime @default(now())
+
+  @@unique([quizId, userId])
+}
+
+model Certificate {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    Int
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  code        String   @unique
+  issuedAt    DateTime @default(now())
+
+  @@unique([userId, courseId])
+}
+
+model Discussion {
+  id        Int         @id @default(autoincrement())
+  lessonId  Int
+  lesson    Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  parentId  Int?
+  parent    Discussion?  @relation("DiscussionReplies", fields: [parentId], references: [id])
+  replies   Discussion[] @relation("DiscussionReplies")
+  createdAt DateTime    @default(now())
+}
