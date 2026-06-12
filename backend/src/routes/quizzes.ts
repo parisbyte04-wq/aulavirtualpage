@@ -47,6 +47,7 @@ router.get("/course/:courseId", authenticate, async (req: AuthRequest, res: Resp
         answers: JSON.parse(existingSubmission.answers),
         submittedAt: existingSubmission.submittedAt,
       },
+      canRetake: !existingSubmission.passed,
     });
   }
 
@@ -84,7 +85,10 @@ router.post("/course/:courseId/submit", authenticate, async (req: AuthRequest, r
   const existing = await prisma.quizSubmission.findUnique({
     where: { quizId_userId: { quizId: quiz.id, userId } },
   });
-  if (existing) return res.status(400).json({ error: "Ya has enviado este cuestionario" });
+  if (existing && existing.passed) return res.status(400).json({ error: "Ya has aprobado este cuestionario" });
+  if (existing && !existing.passed) {
+    await prisma.quizSubmission.delete({ where: { id: existing.id } });
+  }
 
   let score = 0;
   quiz.questions.forEach((q, i) => {

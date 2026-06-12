@@ -12,9 +12,24 @@
 
     <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
       <div v-if="lessons.length === 0" class="text-gray-400 text-sm py-8 text-center">No hay lecciones creadas</div>
-      <div v-for="(lesson, i) in lessons" :key="lesson.id" class="px-6 py-4 border-b border-gray-50 last:border-0 flex items-center justify-between hover:bg-gray-50">
-        <div class="flex items-center gap-4">
-          <div class="w-8 h-8 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm">{{ i + 1 }}</div>
+      <div
+        v-for="(lesson, i) in lessons"
+        :key="lesson.id"
+        class="px-6 py-4 border-b border-gray-50 last:border-0 flex items-center justify-between hover:bg-gray-50 transition-all"
+        :class="{ 'opacity-40 bg-gray-50': draggingId === lesson.id }"
+        draggable="true"
+        @dragstart="onDragStart(lesson.id, i)"
+        @dragover.prevent="onDragOver(i)"
+        @drop="onDrop(i)"
+        @dragend="onDragEnd"
+      >
+        <div class="flex items-center gap-4 flex-1">
+          <div class="flex items-center gap-2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600" title="Arrastrar para reordenar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+            </svg>
+            <div class="w-8 h-8 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm">{{ lesson.order }}</div>
+          </div>
           <div>
             <h3 class="font-medium text-gray-900">{{ lesson.title }}</h3>
             <p class="text-xs text-gray-400">{{ lesson.duration ? lesson.duration + ' min' : '' }} {{ lesson.videoUrl ? '• Video' : '' }}</p>
@@ -33,10 +48,14 @@
 import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { lessonsApi } from "../../services/api";
+import type { Lesson } from "../../types";
 
 const route = useRoute();
 const courseId = Number(route.params.courseId);
-const lessons = ref<any[]>([]);
+const lessons = ref<Lesson[]>([]);
+
+const draggingId = ref<number | null>(null);
+const dragIndex = ref(-1);
 
 onMounted(load);
 
@@ -47,5 +66,32 @@ async function remove(id: number) {
     await lessonsApi.adminDelete(id);
     await load();
   }
+}
+
+function onDragStart(id: number, index: number) {
+  draggingId.value = id;
+  dragIndex.value = index;
+}
+
+function onDragOver(index: number) {
+  if (dragIndex.value === -1 || dragIndex.value === index) return;
+  const item = lessons.value.splice(dragIndex.value, 1)[0];
+  lessons.value.splice(index, 0, item);
+  dragIndex.value = index;
+}
+
+async function onDrop(_index: number) {
+  const updates = lessons.value.map((l, i) => ({ id: l.id, order: i + 1 }));
+  for (const u of updates) {
+    await lessonsApi.adminUpdate(u.id, { order: u.order } as any);
+  }
+  draggingId.value = null;
+  dragIndex.value = -1;
+  await load();
+}
+
+function onDragEnd() {
+  draggingId.value = null;
+  dragIndex.value = -1;
 }
 </script>

@@ -19,6 +19,12 @@ router.post("/generate/:courseId", authenticate, async (req: AuthRequest, res: R
   const courseId = Number(req.params.courseId);
   const userId = req.userId!;
 
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: "Curso no encontrado" });
+  if (!course.certificateEnabled) {
+    return res.status(400).json({ error: "Este curso no tiene certificado habilitado" });
+  }
+
   const existing = await prisma.certificate.findUnique({
     where: { userId_courseId: { userId, courseId } },
   });
@@ -40,12 +46,14 @@ router.post("/generate/:courseId", authenticate, async (req: AuthRequest, res: R
 
   const code = `CERT-${uuidv4().substring(0, 8).toUpperCase()}-${uuidv4().substring(0, 4).toUpperCase()}`;
 
-  const certificate = await prisma.certificate.create({
-    data: { userId, courseId, code },
-    include: { course: true, user: true },
+  const certificate = await prisma.$transaction(async (tx) => {
+    return tx.certificate.create({
+      data: { userId, courseId, code },
+      include: { course: true, user: true },
+    });
   });
 
-  res.json(certificate);
+  res.json({ ...certificate, course: { ...certificate.course, certificateTitle: course.certificateTitle, certificateBgUrl: course.certificateBgUrl, certificateNameX: course.certificateNameX, certificateNameY: course.certificateNameY, certificateNameSize: course.certificateNameSize, certificateNameFont: course.certificateNameFont, certificateFontUrl: course.certificateFontUrl } });
 });
 
 router.get("/verify/:code", async (req, res: Response) => {

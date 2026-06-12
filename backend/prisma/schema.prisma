@@ -13,6 +13,8 @@ model User {
   password      String
   name          String
   role          String            @default("student")
+  isSuperAdmin  Boolean           @default(false)
+  phone         String?
   avatarUrl     String?
   enrolledAt    DateTime          @default(now())
   enrollments   Enrollment[]
@@ -40,6 +42,7 @@ model ResearchArea {
   icon        String    @default("flask")
   order       Int       @default(0)
   projects    Project[]
+  courses     Course[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -96,19 +99,29 @@ model ContactMessage {
 }
 
 model Course {
-  id          Int          @id @default(autoincrement())
-  title       String
-  slug        String       @unique
-  description String
-  imageUrl    String?
-  category    String?
-  published   Boolean      @default(false)
-  lessons     Lesson[]
-  enrollments Enrollment[]
-  quiz        Quiz?
-  certificates Certificate[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id                  Int          @id @default(autoincrement())
+  title               String
+  slug                String       @unique
+  description         String
+  imageUrl            String?
+  category            String?
+  researchAreaId      Int?
+  researchArea        ResearchArea? @relation(fields: [researchAreaId], references: [id])
+  published           Boolean      @default(false)
+  certificateEnabled  Boolean      @default(true)
+  certificateTitle    String?
+  certificateBgUrl    String?
+  certificateNameX    Int          @default(306)
+  certificateNameY    Int          @default(350)
+  certificateNameSize Int          @default(28)
+  certificateNameFont String       @default("Helvetica")
+  certificateFontUrl  String?
+  lessons             Lesson[]
+  enrollments         Enrollment[]
+  quiz                Quiz?
+  certificates        Certificate[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 }
 
 model Lesson {

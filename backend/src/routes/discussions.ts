@@ -26,8 +26,16 @@ router.post("/lesson/:lessonId", authenticate, async (req: AuthRequest, res: Res
   const { content } = req.body;
   if (!content) return res.status(400).json({ error: "El contenido es requerido" });
 
-  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { course: true },
+  });
   if (!lesson) return res.status(404).json({ error: "Lección no encontrada" });
+
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId: lesson.courseId } },
+  });
+  if (!enrollment) return res.status(403).json({ error: "No estás inscrito en este curso" });
 
   const comment = await prisma.discussion.create({
     data: { lessonId, userId, content },

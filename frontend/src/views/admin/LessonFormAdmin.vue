@@ -7,6 +7,7 @@
 
     <div class="bg-white rounded-xl border border-gray-100 p-6">
       <div v-if="success" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">{{ success }}</div>
+      <div v-if="errorMsg" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ errorMsg }}</div>
 
       <form @submit.prevent="handleSave">
         <div class="grid grid-cols-2 gap-4 mb-4">
@@ -30,22 +31,23 @@
           <input v-model="form.videoUrl" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary-500 outline-none" placeholder="https://www.youtube.com/embed/VIDEO_ID" />
         </div>
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Contenido (editor)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Contenido</label>
           <div class="border border-gray-200 rounded-xl overflow-hidden">
-            <div class="bg-gray-50 px-4 py-2 border-b border-gray-200 flex gap-2">
-              <button type="button" @click="exec('bold')" class="px-2 py-1 text-sm font-bold hover:bg-gray-200 rounded" title="Negrita">B</button>
-              <button type="button" @click="exec('italic')" class="px-2 py-1 text-sm italic hover:bg-gray-200 rounded" title="Cursiva">I</button>
-              <button type="button" @click="exec('heading')" class="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Título">H2</button>
-              <button type="button" @click="exec('bullet')" class="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Lista">• Lista</button>
-              <button type="button" @click="exec('ordered')" class="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Lista numerada">1. Lista</button>
-              <button type="button" @click="exec('link')" class="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Enlace">Link</button>
+            <div class="bg-gray-50 px-4 py-2 border-b border-gray-200 flex gap-1 flex-wrap">
+              <button type="button" @click="editor?.chain().focus().toggleBold().run()" class="px-2.5 py-1 text-sm font-bold rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('bold') }" title="Negrita">B</button>
+              <button type="button" @click="editor?.chain().focus().toggleItalic().run()" class="px-2.5 py-1 text-sm italic rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('italic') }" title="Cursiva">I</button>
+              <button type="button" @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()" class="px-2.5 py-1 text-sm rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('heading', { level: 2 }) }" title="Título H2">H2</button>
+              <button type="button" @click="editor?.chain().focus().toggleHeading({ level: 3 }).run()" class="px-2.5 py-1 text-sm rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('heading', { level: 3 }) }" title="Subtítulo H3">H3</button>
+              <button type="button" @click="editor?.chain().focus().toggleBulletList().run()" class="px-2.5 py-1 text-sm rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('bulletList') }" title="Lista">• Lista</button>
+              <button type="button" @click="editor?.chain().focus().toggleOrderedList().run()" class="px-2.5 py-1 text-sm rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('orderedList') }" title="Lista numerada">1. Lista</button>
+              <button type="button" @click="setLink" class="px-2.5 py-1 text-sm rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('link') }" title="Enlace">🔗 Link</button>
+              <button type="button" @click="addImage" class="px-2.5 py-1 text-sm rounded hover:bg-gray-200 transition-colors" title="Imagen">🖼 Img</button>
+              <button type="button" @click="editor?.chain().focus().toggleBlockquote().run()" class="px-2.5 py-1 text-sm rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('blockquote') }" title="Cita">❝ Cita</button>
+              <button type="button" @click="editor?.chain().focus().toggleCode().run()" class="px-2.5 py-1 text-sm font-mono rounded hover:bg-gray-200 transition-colors" :class="{ 'bg-gray-200': editor?.isActive('code') }" title="Código">&lt;/&gt;</button>
             </div>
-            <textarea ref="editorRef" v-model="form.content" rows="16"
-              class="w-full px-4 py-3 font-mono text-sm border-0 focus:outline-none resize-none"
-              placeholder="Escribe el contenido HTML aquí... (puedes pegar HTML directamente)"
-            />
+            <editor-content :editor="editor" class="px-4 py-3 min-h-[300px] prose prose-sm max-w-none focus:outline-none [&_.ProseMirror]:outline-none" />
           </div>
-          <p class="text-xs text-gray-400 mt-1">Editor de texto plano con soporte HTML. Puedes pegar contenido directamente en formato HTML.</p>
+          <p class="text-xs text-gray-400 mt-1">Editor visual. Usa los botones de formato para dar estilo al contenido.</p>
         </div>
         <div class="flex gap-3">
           <button type="submit" :disabled="saving" class="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl disabled:opacity-50">
@@ -59,8 +61,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, onMounted } from "vue";
+import { reactive, ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import { lessonsApi } from "../../services/api";
 
 const route = useRoute();
@@ -69,11 +75,23 @@ const courseId = Number(route.params.courseId);
 const isEdit = computed(() => !!route.params.lessonId);
 const saving = ref(false);
 const success = ref("");
-const editorRef = ref<HTMLTextAreaElement | null>(null);
+const errorMsg = ref("");
 
 const form = reactive({
   courseId,
   title: "", content: "", videoUrl: "", order: 0, duration: 0,
+});
+
+const editor = useEditor({
+  content: "",
+  extensions: [
+    StarterKit,
+    Link.configure({ openOnClick: false }),
+    Image,
+  ],
+  editorProps: {
+    attributes: { class: "outline-none" },
+  },
 });
 
 onMounted(async () => {
@@ -84,45 +102,46 @@ onMounted(async () => {
     form.videoUrl = lesson.lesson.videoUrl || "";
     form.order = lesson.lesson.order;
     form.duration = lesson.lesson.duration || 0;
+    editor.value?.commands.setContent(lesson.lesson.content || "");
   }
 });
 
-function exec(cmd: string) {
-  const ta = editorRef.value;
-  if (!ta) return;
-  const start = ta.selectionStart;
-  const end = ta.selectionEnd;
-  const selected = form.content.substring(start, end);
+onBeforeUnmount(() => {
+  editor.value?.destroy();
+});
 
-  let insert = "";
-  switch (cmd) {
-    case "bold": insert = `<strong>${selected}</strong>`; break;
-    case "italic": insert = `<em>${selected}</em>`; break;
-    case "heading": insert = `<h2>${selected}</h2>`; break;
-    case "bullet": insert = `\n<ul>\n  <li>${selected}</li>\n</ul>`; break;
-    case "ordered": insert = `\n<ol>\n  <li>${selected}</li>\n</ol>`; break;
-    case "link": {
-      const url = prompt("URL:");
-      if (url) insert = `<a href="${url}">${selected || url}</a>`;
-      else return;
-      break;
-    }
-    default: return;
+function setLink() {
+  if (!editor.value) return;
+  const previousUrl = editor.value.getAttributes("link").href;
+  const url = window.prompt("URL:", previousUrl || "https://");
+  if (url === null) return;
+  if (url === "") {
+    editor.value.chain().focus().extendMarkRange("link").unsetLink().run();
+    return;
   }
+  editor.value.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+}
 
-  form.content = form.content.substring(0, start) + insert + form.content.substring(end);
+function addImage() {
+  const url = window.prompt("URL de la imagen:");
+  if (url) {
+    editor.value?.chain().focus().setImage({ src: url }).run();
+  }
 }
 
 async function handleSave() {
-  saving.value = true; success.value = "";
+  saving.value = true; success.value = ""; errorMsg.value = "";
+  const content = editor.value?.getHTML() || "";
   try {
     if (isEdit.value) {
-      await lessonsApi.adminUpdate(Number(route.params.lessonId), { ...form });
+      await lessonsApi.adminUpdate(Number(route.params.lessonId), { ...form, content });
     } else {
-      await lessonsApi.adminCreate({ ...form });
+      await lessonsApi.adminCreate({ ...form, content });
     }
     success.value = "Lección guardada correctamente";
     setTimeout(() => router.push(`/admin/courses/${courseId}/lessons`), 1000);
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.error || "Error al guardar";
   } finally { saving.value = false; }
 }
 </script>

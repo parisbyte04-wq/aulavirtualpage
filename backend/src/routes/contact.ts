@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { body } from "express-validator";
 import prisma from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
+import { requireAdmin, wrapAsync } from "../middleware/roles";
 import { validate } from "../middleware/validate";
 import { sendContactEmail } from "../services/email";
 
@@ -31,26 +32,26 @@ router.post(
   },
 );
 
-router.get("/", authenticate, async (_req: Request, res: Response) => {
+router.get("/", authenticate, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
   const messages = await prisma.contactMessage.findMany({
     orderBy: { createdAt: "desc" },
   });
   res.json(messages);
-});
+}));
 
-router.put("/:id/read", authenticate, async (req: Request, res: Response) => {
+router.put("/:id/read", authenticate, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const message = await prisma.contactMessage.update({
     where: { id },
     data: { read: true },
   });
   res.json(message);
-});
+}));
 
-router.delete("/:id", authenticate, async (req: Request, res: Response) => {
+router.delete("/:id", authenticate, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   await prisma.contactMessage.delete({ where: { id } });
   res.json({ success: true });
-});
+}));
 
 export default router;

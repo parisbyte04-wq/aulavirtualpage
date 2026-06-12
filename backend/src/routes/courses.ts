@@ -8,7 +8,7 @@ const router = Router();
 router.get("/", async (_req: Request, res: Response) => {
   const courses = await prisma.course.findMany({
     where: { published: true },
-    include: { _count: { select: { lessons: true, enrollments: true } } },
+    include: { _count: { select: { lessons: true, enrollments: true } }, researchArea: true },
     orderBy: { createdAt: "desc" },
   });
   res.json(courses);
@@ -16,7 +16,7 @@ router.get("/", async (_req: Request, res: Response) => {
 
 router.get("/all", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
   const courses = await prisma.course.findMany({
-    include: { _count: { select: { lessons: true, enrollments: true } } },
+    include: { _count: { select: { lessons: true, enrollments: true } }, researchArea: true },
     orderBy: { createdAt: "desc" },
   });
   res.json(courses);
@@ -29,6 +29,7 @@ router.get("/:id", async (req: Request, res: Response) => {
     include: {
       lessons: { orderBy: { order: "asc" } },
       _count: { select: { enrollments: true } },
+      researchArea: true,
     },
   });
   if (!course) return res.status(404).json({ error: "Curso no encontrado" });
@@ -71,24 +72,24 @@ export const adminCourseRoutes = Router();
 
 adminCourseRoutes.get("/", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
   const courses = await prisma.course.findMany({
-    include: { _count: { select: { lessons: true, enrollments: true } } },
+    include: { _count: { select: { lessons: true, enrollments: true } }, researchArea: true },
     orderBy: { createdAt: "desc" },
   });
   res.json(courses);
 });
 
 adminCourseRoutes.post("/", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
-  const { title, slug, description, imageUrl, category, published } = req.body;
+  const { title, slug, description, imageUrl, category, researchAreaId, published, certificateEnabled, certificateTitle, certificateBgUrl, certificateNameX, certificateNameY, certificateNameSize, certificateNameFont, certificateFontUrl } = req.body;
   const course = await prisma.course.create({
-    data: { title, slug, description, imageUrl, category, published: published ?? false },
+    data: { title, slug, description, imageUrl, category, researchAreaId: researchAreaId ?? null, published: published ?? false, certificateEnabled, certificateTitle, certificateBgUrl, certificateNameX, certificateNameY, certificateNameSize, certificateNameFont, certificateFontUrl },
   });
   res.json(course);
 });
 
 adminCourseRoutes.put("/:id", authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
   const id = Number(req.params.id);
-  const { title, slug, description, imageUrl, category, published } = req.body;
-  const course = await prisma.course.update({ where: { id }, data: { title, slug, description, imageUrl, category, published } });
+  const { title, slug, description, imageUrl, category, researchAreaId, published, certificateEnabled, certificateTitle, certificateBgUrl, certificateNameX, certificateNameY, certificateNameSize, certificateNameFont, certificateFontUrl } = req.body;
+  const course = await prisma.course.update({ where: { id }, data: { title, slug, description, imageUrl, category, researchAreaId: researchAreaId ?? null, published, certificateEnabled, certificateTitle, certificateBgUrl, certificateNameX, certificateNameY, certificateNameSize, certificateNameFont, certificateFontUrl } });
   res.json(course);
 });
 

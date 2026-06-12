@@ -9,8 +9,8 @@ import { validate } from "../middleware/validate";
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
-function generateToken(user: { id: number; role: string }) {
-  return jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+function generateToken(user: { id: number; role: string; isSuperAdmin: boolean }) {
+  return jwt.sign({ userId: user.id, role: user.role, isSuperAdmin: user.isSuperAdmin }, JWT_SECRET, { expiresIn: "7d" });
 }
 
 router.post(
@@ -25,7 +25,7 @@ router.post(
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ error: "Credenciales inválidas" });
     const token = generateToken(user);
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: user.avatarUrl } });
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, isSuperAdmin: user.isSuperAdmin, phone: user.phone, avatarUrl: user.avatarUrl } });
   },
 );
 
@@ -42,14 +42,14 @@ router.post(
     const hashed = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({ data: { name, email, password: hashed, role: "student" } });
     const token = generateToken(user);
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: null } });
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, isSuperAdmin: false, phone: null, avatarUrl: null } });
   },
 );
 
 router.get("/profile", authenticate, async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
-  res.json({ id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: user.avatarUrl });
+  res.json({ id: user.id, email: user.email, name: user.name, role: user.role, isSuperAdmin: user.isSuperAdmin, phone: user.phone, avatarUrl: user.avatarUrl });
 });
 
 router.put(
@@ -59,9 +59,10 @@ router.put(
   body("email").optional().isEmail().withMessage("Email inválido"),
   validate,
   async (req: AuthRequest, res: Response) => {
-    const { name, email } = req.body;
+    const { name, email, phone } = req.body;
     const data: any = {};
     if (name) data.name = name;
+    if (phone !== undefined) data.phone = phone;
     if (email) {
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing && existing.id !== req.userId) {
@@ -70,7 +71,7 @@ router.put(
       data.email = email;
     }
     const user = await prisma.user.update({ where: { id: req.userId }, data });
-    res.json({ id: user.id, email: user.email, name: user.name, role: user.role, avatarUrl: user.avatarUrl });
+  res.json({ id: user.id, email: user.email, name: user.name, role: user.role, isSuperAdmin: user.isSuperAdmin, phone: user.phone, avatarUrl: user.avatarUrl });
   },
 );
 

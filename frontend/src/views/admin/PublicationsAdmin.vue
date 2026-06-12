@@ -7,6 +7,9 @@
       </button>
     </div>
 
+    <div v-if="loading" class="text-center py-12 text-gray-400">Cargando publicaciones...</div>
+    <template v-else>
+    <div v-if="errorMsg" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ errorMsg }}</div>
     <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
       <div v-if="items.length === 0" class="text-gray-400 text-sm py-8 text-center">No hay publicaciones registradas</div>
       <table v-else class="w-full">
@@ -71,6 +74,7 @@
         </form>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -83,9 +87,14 @@ const items = ref<Publication[]>([]);
 const showModal = ref(false);
 const editing = ref<Publication | null>(null);
 const saving = ref(false);
+const loading = ref(true);
+const errorMsg = ref("");
 const form = reactive({ title: "", summary: "", type: "article", date: new Date().toISOString().split("T")[0] });
 
-onMounted(async () => { items.value = await publications.getAll(); });
+onMounted(async () => {
+  try { items.value = await publications.getAll(); }
+  finally { loading.value = false; }
+});
 
 function openCreate() {
   editing.value = null;
@@ -103,18 +112,26 @@ function edit(item: Publication) {
 
 async function handleSave() {
   saving.value = true;
+  errorMsg.value = "";
   try {
     if (editing.value) await publications.update(editing.value.id, { ...form });
     else await publications.create({ ...form });
     showModal.value = false;
     items.value = await publications.getAll();
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.error || "Error al guardar";
   } finally { saving.value = false; }
 }
 
 async function remove(id: number) {
   if (confirm("¿Eliminar esta publicación?")) {
-    await publications.remove(id);
-    items.value = await publications.getAll();
+    errorMsg.value = "";
+    try {
+      await publications.remove(id);
+      items.value = await publications.getAll();
+    } catch (e: any) {
+      errorMsg.value = e.response?.data?.error || "Error al eliminar";
+    }
   }
 }
 

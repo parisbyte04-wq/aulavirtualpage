@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
+import { requireAdmin, wrapAsync } from "../middleware/roles";
 
 const router = Router();
 
@@ -9,7 +10,7 @@ router.get("/", async (_req: Request, res: Response) => {
   res.json(about || {});
 });
 
-router.put("/", authenticate, async (req: Request, res: Response) => {
+router.put("/", authenticate, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
   const { title, mission, vision, history } = req.body;
   const existing = await prisma.about.findFirst();
   if (existing) {
@@ -24,6 +25,6 @@ router.put("/", authenticate, async (req: Request, res: Response) => {
     });
     res.json(created);
   }
-});
+}));
 
 export default router;

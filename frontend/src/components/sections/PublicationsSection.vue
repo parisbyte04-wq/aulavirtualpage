@@ -8,9 +8,10 @@
 
       <div class="max-w-3xl mx-auto space-y-6">
         <div
-          v-for="pub in publications"
+          v-for="pub in latest"
           :key="pub.id"
-          class="flex gap-4 p-6 rounded-xl border border-gray-100 hover:border-primary-100 hover:shadow-md transition-all"
+          class="flex gap-4 p-6 rounded-xl border border-gray-100 hover:border-primary-100 hover:shadow-md transition-all cursor-pointer"
+          @click="$router.push(`/publicaciones/${pub.id}`)"
         >
           <div class="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
             :class="pub.type === 'article' ? 'bg-primary-50 text-primary-600' : 'bg-accent-50 text-accent-600'"
@@ -36,17 +37,30 @@
           </div>
         </div>
       </div>
+
+      <div class="text-center mt-10">
+        <router-link
+          to="/publicaciones"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors"
+        >
+          Ver todas las publicaciones
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+        </router-link>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import type { Publication } from "../../types";
 import SectionTitle from "../ui/SectionTitle.vue";
 
-defineProps<{
+const props = defineProps<{
   publications: Publication[];
 }>();
+
+const latest = computed(() => props.publications.slice(0, 2));
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("es-ES", {

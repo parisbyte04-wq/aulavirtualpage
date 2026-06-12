@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { authenticate } from "../middleware/auth";
+import { requireAdmin, wrapAsync } from "../middleware/roles";
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get("/:id", async (req: Request, res: Response) => {
   res.json(publication);
 });
 
-router.post("/", authenticate, async (req: Request, res: Response) => {
+router.post("/", authenticate, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
   const { title, summary, content, imageUrl, date, type, link } = req.body;
   const publication = await prisma.publication.create({
     data: {
@@ -31,9 +32,9 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
     },
   });
   res.json(publication);
-});
+}));
 
-router.put("/:id", authenticate, async (req: Request, res: Response) => {
+router.put("/:id", authenticate, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const { title, summary, content, imageUrl, date, type, link } = req.body;
   const publication = await prisma.publication.update({
@@ -49,12 +50,12 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
     },
   });
   res.json(publication);
-});
+}));
 
-router.delete("/:id", authenticate, async (req: Request, res: Response) => {
+router.delete("/:id", authenticate, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   await prisma.publication.delete({ where: { id } });
   res.json({ success: true });
-});
+}));
 
 export default router;

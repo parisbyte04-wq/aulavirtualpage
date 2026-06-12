@@ -58,7 +58,7 @@ async function verify() {
   if (!code.value.trim()) return;
   loading.value = true; result.value = null;
   try {
-    const data = await certificatesApi.verify(code.value.trim());
+    const data = await certificatesApi.verify(code.value.trim().toUpperCase());
     result.value = data.valid;
     certData.value = data;
   } catch {

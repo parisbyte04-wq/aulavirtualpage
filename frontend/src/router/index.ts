@@ -45,6 +45,16 @@ const router = createRouter({
       meta: { requiresStudent: true },
     },
     {
+      path: "/publicaciones",
+      name: "publications",
+      component: () => import("../views/public/PublicationsView.vue"),
+    },
+    {
+      path: "/publicaciones/:id",
+      name: "publication-detail",
+      component: () => import("../views/public/PublicationDetail.vue"),
+    },
+    {
       path: "/verificar",
       name: "verify",
       component: () => import("../views/public/VerifyCertificate.vue"),
@@ -77,6 +87,12 @@ const router = createRouter({
           meta: { requiresAdmin: true },
         },
         {
+          path: "profile",
+          name: "admin-profile",
+          component: () => import("../views/admin/ProfileAdmin.vue"),
+          meta: { requiresAdmin: true },
+        },
+        {
           path: "projects",
           name: "admin-projects",
           component: () => import("../views/admin/ProjectsAdmin.vue"),
@@ -105,6 +121,12 @@ const router = createRouter({
           name: "admin-messages",
           component: () => import("../views/admin/MessagesAdmin.vue"),
           meta: { requiresAdmin: true },
+        },
+        {
+          path: "admins",
+          name: "admin-admins",
+          component: () => import("../views/admin/AdminsAdmin.vue"),
+          meta: { requiresAdmin: true, requiresSuperAdmin: true },
         },
         {
           path: "about",
@@ -155,6 +177,12 @@ const router = createRouter({
           meta: { requiresAdmin: true },
         },
         {
+          path: "courses/:courseId/certificate",
+          name: "admin-certificate",
+          component: () => import("../views/admin/CertificateConfigAdmin.vue"),
+          meta: { requiresAdmin: true },
+        },
+        {
           path: "enrollments",
           name: "admin-enrollments",
           component: () => import("../views/admin/EnrollmentsAdmin.vue"),
@@ -176,24 +204,29 @@ router.beforeEach((to, _from, next) => {
 
   if (to.meta.requiresAdmin || to.meta.requiresStudent) {
     if (!token) {
-      next({ name: "login" });
+      next({ name: to.meta.requiresAdmin ? "admin-login" : "login" });
       return;
     }
 
     const payload = decodeToken(token);
     if (!payload) {
       localStorage.removeItem("token");
-      next({ name: "login" });
+      next({ name: to.meta.requiresAdmin ? "admin-login" : "login" });
       return;
     }
 
     if (to.meta.requiresAdmin && payload.role !== "admin") {
-      next({ name: "login" });
+      next({ name: payload.role === "student" ? "landing" : "admin-login" });
+      return;
+    }
+
+    if (to.meta.requiresSuperAdmin && !payload.isSuperAdmin) {
+      next({ name: "dashboard" });
       return;
     }
 
     if (to.meta.requiresStudent && payload.role !== "student") {
-      next({ name: "login" });
+      next({ name: payload.role === "admin" ? "dashboard" : "login" });
       return;
     }
   }

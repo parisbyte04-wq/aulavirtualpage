@@ -7,6 +7,9 @@
       </button>
     </div>
 
+    <div v-if="loading" class="text-center py-12 text-gray-400">Cargando proyectos...</div>
+    <template v-else>
+    <div v-if="errorMsg" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ errorMsg }}</div>
     <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
       <div v-if="items.length === 0" class="text-gray-400 text-sm py-8 text-center">No hay proyectos registrados</div>
       <table v-else class="w-full">
@@ -90,6 +93,7 @@
         </form>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -103,12 +107,15 @@ const areas = ref<ResearchArea[]>([]);
 const showModal = ref(false);
 const editing = ref<Project | null>(null);
 const saving = ref(false);
+const loading = ref(true);
 const form = reactive({ title: "", description: "", imageUrl: "", type: "research", techStack: "", githubUrl: "", liveUrl: "", researchAreaId: null as number | null });
 
 onMounted(async () => {
-  const [p, a] = await Promise.all([projects.getAll(), researchAreas.getAll()]);
-  items.value = p;
-  areas.value = a;
+  try {
+    const [p, a] = await Promise.all([projects.getAll(), researchAreas.getAll()]);
+    items.value = p;
+    areas.value = a;
+  } finally { loading.value = false; }
 });
 
 function openCreate() {
@@ -137,8 +144,11 @@ function edit(item: Project) {
   showModal.value = true;
 }
 
+const errorMsg = ref("");
+
 async function handleSave() {
   saving.value = true;
+  errorMsg.value = "";
   try {
     if (editing.value) {
       await projects.update(editing.value.id, { ...form });
@@ -147,6 +157,8 @@ async function handleSave() {
     }
     showModal.value = false;
     items.value = await projects.getAll();
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.error || "Error al guardar";
   } finally {
     saving.value = false;
   }
@@ -154,8 +166,13 @@ async function handleSave() {
 
 async function remove(id: number) {
   if (confirm("¿Eliminar este proyecto?")) {
-    await projects.remove(id);
-    items.value = await projects.getAll();
+    errorMsg.value = "";
+    try {
+      await projects.remove(id);
+      items.value = await projects.getAll();
+    } catch (e: any) {
+      errorMsg.value = e.response?.data?.error || "Error al eliminar";
+    }
   }
 }
 </script>

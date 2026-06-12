@@ -22,6 +22,7 @@ import adminLessonRoutes from "./routes/adminLessons";
 import adminQuizRoutes from "./routes/adminQuiz";
 import adminEnrollmentRoutes from "./routes/adminEnrollments";
 import adminCertificateRoutes from "./routes/adminCertificates";
+import adminUserRoutes from "./routes/adminUsers";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,6 +64,7 @@ app.use("/api/admin/lessons", adminLessonRoutes);
 app.use("/api/admin/quiz", adminQuizRoutes);
 app.use("/api/admin/enrollments", adminEnrollmentRoutes);
 app.use("/api/admin/certificates", adminCertificateRoutes);
+app.use("/api/admin/users", adminUserRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });

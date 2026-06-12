@@ -8,12 +8,13 @@ async function main() {
   const adminPassword = await bcrypt.hash("admin123", 10);
   await prisma.user.upsert({
     where: { email: "admin@instituto.com" },
-    update: {},
+    update: { isSuperAdmin: true },
     create: {
       email: "admin@instituto.com",
       password: adminPassword,
       name: "Administrador",
       role: "admin",
+      isSuperAdmin: true,
     },
   });
 
@@ -91,6 +92,7 @@ async function main() {
   }
 
   // Demo course: "Introducción a la Inteligencia Artificial"
+  const iaArea = await prisma.researchArea.findFirst({ where: { title: "Inteligencia Artificial" } });
   const course = await prisma.course.upsert({
     where: { slug: "introduccion-ia" },
     update: {},
@@ -99,6 +101,7 @@ async function main() {
       slug: "introduccion-ia",
       description: "Curso completo que cubre los fundamentos de la Inteligencia Artificial: desde historia y conceptos básicos hasta machine learning, redes neuronales y aplicaciones prácticas. Ideal para principiantes.",
       category: "Tecnología",
+      researchAreaId: iaArea?.id ?? null,
       published: true,
     },
   });

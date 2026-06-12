@@ -5,6 +5,9 @@
       <h2 class="text-2xl font-bold text-gray-900 mt-1">Cuestionario del curso</h2>
     </div>
 
+    <div v-if="successMsg" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">{{ successMsg }}</div>
+    <div v-if="errorMsg" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ errorMsg }}</div>
+
     <div class="bg-white rounded-xl border border-gray-100 p-6 mb-6">
       <h3 class="font-bold text-gray-900 mb-4">Configuración</h3>
       <div class="grid grid-cols-2 gap-4 mb-4">
@@ -66,16 +69,19 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { quizzesApi } from "../../services/api";
 
 const route = useRoute();
+const router = useRouter();
 const courseId = Number(route.params.courseId);
 
 const quizForm = reactive({ title: "Examen Final", passingScore: 70 });
 const questions = ref<any[]>([]);
 const saving = ref(false);
 const savingQuiz = ref(false);
+const successMsg = ref("");
+const errorMsg = ref("");
 let keyCounter = 0;
 
 onMounted(async () => {
@@ -111,28 +117,55 @@ function removeQuestion(index: number) {
 
 async function saveQuiz() {
   savingQuiz.value = true;
+  successMsg.value = "";
+  errorMsg.value = "";
   try {
     await quizzesApi.adminSave(courseId, { title: quizForm.title, passingScore: quizForm.passingScore });
-    alert("Configuración guardada");
+    successMsg.value = "Configuración guardada. Redirigiendo...";
+    setTimeout(() => router.push(`/admin/courses/${courseId}/lessons`), 800);
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.error || "Error al guardar configuración";
   } finally { savingQuiz.value = false; }
 }
 
 async function saveAll() {
   saving.value = true;
+  successMsg.value = "";
+  errorMsg.value = "";
   try {
-    await quizzesApi.adminSave(courseId, { title: quizForm.title, passingScore: quizForm.passingScore });
+    const quiz = await quizzesApi.adminSave(courseId, { title: quizForm.title, passingScore: quizForm.passingScore });
 
+    const existingIds = new Set(questions.value.filter((q) => q._existing && q.id).map((q) => q.id));
+
+    const currentIds = new Set<number>();
     for (const q of questions.value) {
       const options = q.optionsText.split("\n").filter((o: string) => o.trim());
       const data = { text: q.text, options, correctIndex: q.correctIndex, order: questions.value.indexOf(q) };
       if (q._existing && q.id) {
         await quizzesApi.adminUpdateQuestion(q.id, data);
+        currentIds.add(q.id);
       } else {
-        const quizData = await quizzesApi.adminGetByCourse(courseId);
-        await quizzesApi.adminCreateQuestion(quizData.id, data);
+        const quizId = quiz.id;
+        const created = await quizzesApi.adminCreateQuestion(quizId, data);
+        q.id = created.id;
+        q._existing = true;
+        currentIds.add(created.id);
       }
     }
-    alert("Preguntas guardadas correctamente");
+
+    const allQuizData = await quizzesApi.adminGetByCourse(courseId);
+    if (allQuizData?.questions) {
+      for (const oldQ of allQuizData.questions) {
+        if (!currentIds.has(oldQ.id)) {
+          await quizzesApi.adminDeleteQuestion(oldQ.id);
+        }
+      }
+    }
+
+    successMsg.value = "Preguntas guardadas correctamente. Redirigiendo...";
+    setTimeout(() => router.push(`/admin/courses/${courseId}/lessons`), 800);
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.error || "Error al guardar preguntas";
   } finally { saving.value = false; }
 }
 </script>

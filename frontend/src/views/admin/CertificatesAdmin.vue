@@ -1,7 +1,8 @@
 <template>
   <div>
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Certificados emitidos</h2>
-    <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+    <div v-if="loading" class="text-center py-12 text-gray-400">Cargando certificados...</div>
+    <div v-else class="bg-white rounded-xl border border-gray-100 overflow-hidden">
       <div v-if="certificates.length === 0" class="text-gray-400 text-sm py-8 text-center">No hay certificados emitidos</div>
       <table v-else class="w-full">
         <thead class="bg-gray-50">
@@ -30,10 +31,13 @@ import { ref, onMounted } from "vue";
 import api from "../../services/api";
 
 const certificates = ref<any[]>([]);
+const loading = ref(true);
 
 onMounted(async () => {
-  const res = await api.get("/admin/certificates");
-  certificates.value = res.data;
+  try {
+    const res = await api.get("/admin/certificates");
+    certificates.value = res.data;
+  } finally { loading.value = false; }
 });
 
 function formatDate(d: string) {

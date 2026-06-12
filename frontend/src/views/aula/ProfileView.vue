@@ -75,7 +75,10 @@ const success = ref("");
 const errorMsg = ref("");
 const previewUrl = ref("");
 
-onMounted(() => {
+onMounted(async () => {
+  if (!authStore.user?.email) {
+    await authStore.fetchProfile();
+  }
   if (authStore.user) {
     form.name = authStore.user.name;
     form.email = authStore.user.email;

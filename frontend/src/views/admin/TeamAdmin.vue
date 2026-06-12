@@ -7,6 +7,9 @@
       </button>
     </div>
 
+    <div v-if="loading" class="text-center py-12 text-gray-400">Cargando equipo...</div>
+    <template v-else>
+    <div v-if="errorMsg" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ errorMsg }}</div>
     <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
       <div v-if="items.length === 0" class="text-gray-400 text-sm py-8 text-center">No hay miembros registrados</div>
       <table v-else class="w-full">
@@ -61,6 +64,7 @@
         </form>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -73,9 +77,14 @@ const items = ref<TeamMember[]>([]);
 const showModal = ref(false);
 const editing = ref<TeamMember | null>(null);
 const saving = ref(false);
+const loading = ref(true);
+const errorMsg = ref("");
 const form = reactive({ name: "", role: "", bio: "", email: "" });
 
-onMounted(async () => { items.value = await teamMembers.getAll(); });
+onMounted(async () => {
+  try { items.value = await teamMembers.getAll(); }
+  finally { loading.value = false; }
+});
 
 function openCreate() {
   editing.value = null;
@@ -91,18 +100,26 @@ function edit(item: TeamMember) {
 
 async function handleSave() {
   saving.value = true;
+  errorMsg.value = "";
   try {
     if (editing.value) await teamMembers.update(editing.value.id, { ...form });
     else await teamMembers.create({ ...form });
     showModal.value = false;
     items.value = await teamMembers.getAll();
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.error || "Error al guardar";
   } finally { saving.value = false; }
 }
 
 async function remove(id: number) {
   if (confirm("¿Eliminar este miembro?")) {
-    await teamMembers.remove(id);
-    items.value = await teamMembers.getAll();
+    errorMsg.value = "";
+    try {
+      await teamMembers.remove(id);
+      items.value = await teamMembers.getAll();
+    } catch (e: any) {
+      errorMsg.value = e.response?.data?.error || "Error al eliminar";
+    }
   }
 }
 </script>

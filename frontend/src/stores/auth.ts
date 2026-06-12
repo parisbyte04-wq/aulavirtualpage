@@ -10,13 +10,14 @@ export const useAuthStore = defineStore("auth", () => {
     if (!t) return null;
     const payload = decodeToken(t);
     if (!payload) return null;
-    return { id: payload.userId, email: "", name: "", role: payload.role, avatarUrl: null };
+    return { id: payload.userId, email: "", name: "", role: payload.role, isSuperAdmin: payload.isSuperAdmin, avatarUrl: null, phone: null };
   }
 
   const user = ref<User | null>(initUser());
 
   const isAuthenticated = computed(() => !!token.value);
   const isAdmin = computed(() => user.value?.role === "admin");
+  const isSuperAdmin = computed(() => user.value?.isSuperAdmin === true);
   const isStudent = computed(() => user.value?.role === "student");
 
   async function login(email: string, password: string) {
@@ -42,6 +43,7 @@ export const useAuthStore = defineStore("auth", () => {
         user.value.name = profile.name;
         user.value.email = profile.email;
         user.value.avatarUrl = profile.avatarUrl;
+        user.value.isSuperAdmin = profile.isSuperAdmin;
       } else {
         user.value = profile;
       }
@@ -60,5 +62,5 @@ export const useAuthStore = defineStore("auth", () => {
     localStorage.removeItem("token");
   }
 
-  return { user, token, isAuthenticated, isAdmin, isStudent, login, register, fetchProfile, setAvatar, logout };
+  return { user, token, isAuthenticated, isAdmin, isSuperAdmin, isStudent, login, register, fetchProfile, setAvatar, logout };
 });

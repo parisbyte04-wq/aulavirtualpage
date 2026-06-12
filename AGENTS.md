@@ -2,66 +2,32 @@
 
 ## Stack
 - **Frontend:** Vue 3 (Composition API + `<script setup>`) + Vite + TypeScript + Tailwind CSS v4
-- **Backend:** Node.js + Express + TypeScript + Prisma ORM + SQLite
-- **Email:** Nodemailer (SMTP) para formulario de contacto
-- **PDF:** pdfmake (generación client-side de certificados)
-- **Auth:** JWT + bcrypt, rol en payload (`userId`, `role`)
-
-## Estructura del proyecto
-```
-├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma    # 15 modelos (User → Discussion)
-│   │   └── seed.ts          # Datos demo (admin, estudiante, curso, etc.)
-│   ├── src/
-│   │   ├── routes/          # API REST organizada por recurso
-│   │   ├── middleware/       # auth.ts (JWT), roles.ts (admin/student), validate.ts
-│   │   ├── lib/prisma.ts    # Instancia singleton de PrismaClient
-│   │   └── server.ts        # Express app, helmet, rate-limit, mount de rutas
-│   └── uploads/             # Avatars subidos por multer
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # layout/, sections/, ui/, aula/
-│   │   ├── views/           # Landing, admin/, aula/, auth/, public/
-│   │   ├── services/api.ts  # Axios instance + decodeToken + API wrappers
-│   │   ├── stores/auth.ts   # Pinia store de autenticación
-│   │   ├── router/index.ts  # Rutas con guards requiresAdmin/requiresStudent
-│   │   └── types/index.ts   # Interfaces TypeScript
-│   └── public/
-```
-
-## Modelo Project
-```
-type: "research" | "software"
-techStack: string (JSON array, ej. '["Vue","Node"]')
-githubUrl: string?
-liveUrl: string?
-```
-Los proyectos de software se muestran en `SoftwareSection.vue` (sección "Software Científico") con badges de tecnologías y enlaces a GitHub/Demo.
-
-## Rutas relevantes
-| Ruta | Descripción |
-|---|---|
-| `GET /api/projects` | Todos los proyectos |
-| `GET /api/projects/software` | Solo tipo "software" |
-| `POST/PUT /api/projects` | CRUD admin (autenticado) |
-| `GET /api/auth/profile` | Perfil del usuario autenticado |
-| `GET /api/courses` | Catálogo público de cursos |
-| `GET /api/certificates/verify/:code` | Verificación pública de certificado |
-
-## Admin panel (`/admin`)
-- Sidebar con: Dashboard, Cursos, Lecciones, Quiz, Proyectos (research/software), Áreas, Equipo, Publicaciones, Inscripciones, Certificados, Mensajes
-- CRUD de Proyectos soporta selector de tipo y campos condicionales (techStack, githubUrl, liveUrl)
+- **Backend:** Node.js + Express + TypeScript + Prisma ORM (SQLite)
+- **Auth:** JWT (bcrypt) — rol en payload (`userId`, `role`), almacenado en localStorage, expira en 7 días
+- **Email:** Nodemailer (SMTP) — formulario de contacto
+- **PDF:** pdfmake (client-side) — certificados
 
 ## Comandos
-```bash
-cd backend && npx tsx watch src/server.ts     # Backend dev
-cd frontend && npm run dev                     # Frontend dev
-cd backend && npx tsx prisma/seed.ts           # Re-seed DB
-```
 
-## Convenciones
-- Importaciones absolutas desde `src/` en frontend
-- Estilos con Tailwind utility classes, sin CSS modules
-- Errores del backend no exponen stack trace en producción
-- Ayuda de rutas con express-validator en auth y contact
+| Contexto | Comando | Acción |
+|---|---|---|
+| root | `npm run dev` | Backend + frontend simultáneo (concurrently) |
+| root | `npm run build` | `tsc` backend + `vue-tsc -b && vite build` frontend |
+| `backend/` | `npm run dev` | `tsx watch src/server.ts` |
+| `backend/` | `npm run db:seed` | `tsx prisma/seed.ts` (re-seed) |
+| `backend/` | `npm run db:push` | `prisma db push` (schema sync sin migración) |
+| `frontend/` | `npm run dev` | `vite` (puerto 5173) |
+| `frontend/` | `npm run build` | `vue-tsc -b && vite build` (type-check + bundle) |
+
+No existe ninguna configuración de tests, linter, ni formateador. No ejecutar `npm test`, `eslint`, `prettier`, etc.
+
+## Estructura relevante
+
+- **Backend CommonJS** (`module: "commonjs"` en tsconfig), **frontend ESM** (`"type": "module"`)
+- Frontend usa path alias `@/` → `./src/*` (tsconfig paths + Vite resolve)
+- Base de datos: SQLite local en `backend/prisma/dev.db`. `DATABASE_URL` en `backend/.env`
+- Backend expone API REST en `src/routes/` con middleware: `auth.ts` (JWT verify), `roles.ts` (admin/student guard), `validate.ts` (express-validator), `upload.ts` (multer → `backend/uploads/`)
+- No hay `.gitignore` — evitar committear `dev.db`, `dist/`, `node_modules/`, `.env`
+- `CREDENCIALES.md` contiene credenciales de demo (admin, estudiante)
+- Auth: ruta `POST /api/auth/login` devuelve JWT (24h); frontend lo guarda en localStorage y lo envía como `Authorization: Bearer <token>`
+- Admin panel en `/admin` con CRUD por recurso en `src/views/admin/`

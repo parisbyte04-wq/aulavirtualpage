@@ -1,15 +1,17 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authenticate, AuthRequest } from "../middleware/auth";
+import { requireStudent } from "../middleware/roles";
 
 const router = Router();
 
-router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
+router.post("/", authenticate, requireStudent, async (req: AuthRequest, res: Response) => {
   const { courseId } = req.body;
   const userId = req.userId!;
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return res.status(404).json({ error: "Curso no encontrado" });
+  if (!course.published) return res.status(400).json({ error: "El curso no está disponible" });
 
   const existing = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId, courseId } },
@@ -29,7 +31,11 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
     where: { userId },
     include: {
       course: {
-        include: { _count: { select: { lessons: true } } },
+        include: {
+          lessons: { orderBy: { order: "asc" }, select: { id: true, title: true, order: true } },
+          _count: { select: { lessons: true } },
+          researchArea: true,
+        },
       },
     },
     orderBy: { enrolledAt: "desc" },

@@ -1,7 +1,8 @@
 <template>
   <div>
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Bandeja de Mensajes</h2>
-    <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+    <div v-if="loading" class="text-center py-12 text-gray-400">Cargando mensajes...</div>
+    <div v-else class="bg-white rounded-xl border border-gray-100 overflow-hidden">
       <div v-if="items.length === 0" class="text-gray-400 text-sm py-8 text-center">No hay mensajes</div>
       <div v-for="msg in items" :key="msg.id" class="px-6 py-4 border-b border-gray-50 last:border-0"
         :class="{ 'bg-primary-50/30': !msg.read }"
@@ -33,10 +34,14 @@ import { contact } from "../../services/api";
 import type { ContactMessage } from "../../types";
 
 const items = ref<ContactMessage[]>([]);
+const loading = ref(true);
 
 onMounted(load);
 
-async function load() { items.value = await contact.getAll(); }
+async function load() {
+  try { items.value = await contact.getAll(); }
+  finally { loading.value = false; }
+}
 
 async function markRead(id: number) {
   await contact.markRead(id);

@@ -3,7 +3,10 @@ export interface User {
   email: string;
   name: string;
   role: string;
+  isSuperAdmin?: boolean;
+  phone: string | null;
   avatarUrl: string | null;
+  createdAt?: string;
 }
 
 export interface About {
@@ -80,9 +83,20 @@ export interface Course {
   description: string;
   imageUrl: string | null;
   category: string | null;
+  researchAreaId: number | null;
+  researchArea: ResearchArea | null;
   published: boolean;
+  certificateEnabled: boolean;
+  certificateTitle: string | null;
+  certificateBgUrl: string | null;
+  certificateNameX: number;
+  certificateNameY: number;
+  certificateNameSize: number;
+  certificateNameFont: string;
+  certificateFontUrl: string | null;
   _count?: { lessons: number; enrollments: number };
   lessons?: Lesson[];
+  createdAt?: string;
 }
 
 export interface Lesson {
@@ -138,7 +152,7 @@ export interface Certificate {
   courseId: number;
   code: string;
   issuedAt: string;
-  course: { title: string };
+  course: Course;
   user?: { name: string };
 }
 

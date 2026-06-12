@@ -7,6 +7,9 @@
       </button>
     </div>
 
+    <div v-if="loading" class="text-center py-12 text-gray-400">Cargando áreas...</div>
+    <template v-else>
+    <div v-if="errorMsg" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ errorMsg }}</div>
     <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
       <div v-if="areas.length === 0" class="text-gray-400 text-sm py-8 text-center">No hay áreas registradas</div>
       <table v-else class="w-full">
@@ -66,6 +69,7 @@
         </form>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -78,12 +82,15 @@ const areas = ref<ResearchArea[]>([]);
 const showModal = ref(false);
 const editing = ref<ResearchArea | null>(null);
 const saving = ref(false);
+const loading = ref(true);
+const errorMsg = ref("");
 const form = reactive({ title: "", description: "", icon: "flask", order: 0 });
 
 onMounted(load);
 
 async function load() {
-  areas.value = await researchAreas.getAll();
+  try { areas.value = await researchAreas.getAll(); }
+  finally { loading.value = false; }
 }
 
 function openCreate() {
@@ -106,6 +113,7 @@ function edit(area: ResearchArea) {
 
 async function handleSave() {
   saving.value = true;
+  errorMsg.value = "";
   try {
     if (editing.value) {
       await researchAreas.update(editing.value.id, { ...form });
@@ -114,6 +122,8 @@ async function handleSave() {
     }
     showModal.value = false;
     await load();
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.error || "Error al guardar";
   } finally {
     saving.value = false;
   }
@@ -121,8 +131,13 @@ async function handleSave() {
 
 async function remove(id: number) {
   if (confirm("¿Eliminar esta área?")) {
-    await researchAreas.remove(id);
-    await load();
+    errorMsg.value = "";
+    try {
+      await researchAreas.remove(id);
+      await load();
+    } catch (e: any) {
+      errorMsg.value = e.response?.data?.error || "Error al eliminar";
+    }
   }
 }
 </script>

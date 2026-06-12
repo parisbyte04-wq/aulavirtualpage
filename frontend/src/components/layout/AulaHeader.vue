@@ -11,8 +11,8 @@
           </router-link>
           <div class="hidden md:flex items-center gap-6">
             <router-link to="/aula" class="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">Cursos</router-link>
-            <router-link v-if="authStore.isAuthenticated" to="/mis-cursos" class="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">Mis cursos</router-link>
-            <router-link v-if="authStore.isAuthenticated" to="/mis-certificados" class="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">Certificados</router-link>
+            <router-link v-if="authStore.isStudent" to="/mis-cursos" class="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">Mis cursos</router-link>
+            <router-link v-if="authStore.isStudent" to="/mis-certificados" class="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">Certificados</router-link>
           </div>
         </div>
 
